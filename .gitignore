@@ -104,3 +104,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Demo generated files
+demo/APIClient/similar_artists.*
