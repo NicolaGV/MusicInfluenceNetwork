@@ -5,7 +5,6 @@ import dataclasses
 
 from dotenv import load_dotenv
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src')))
 from MusicInfluenceNetwork.Clients import LastFMClient
 
 """ Alternative JSON encoder to serialize dataclasses and avoid converting them to dictionaries
