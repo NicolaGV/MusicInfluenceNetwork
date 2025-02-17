@@ -5,6 +5,7 @@ class Artist:
     name: str
     mbid: str
     url: str
+    begin: int
 
 
 @dataclass

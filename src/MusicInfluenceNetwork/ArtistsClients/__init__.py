@@ -1,0 +1,2 @@
+from .artist_client import ArtistClient
+from .musicbrainz_artist_client import MusicbrainzArtistClient
