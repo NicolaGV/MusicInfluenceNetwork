@@ -1,22 +1,19 @@
-from ArtistsClients import ArtistClient
+from .artist_client import ArtistClient
 
 import requests
 import time
 import json
-
-import os
-from dotenv import load_dotenv
 
 from pathlib import Path
 
 
 class MusicbrainzArtistClient(ArtistClient):
 
-    def __init__(self, base_url: str = "https://musicbrainz.org/ws/2/artist"):
+    def __init__(self, user_agent: str, base_url: str = "https://musicbrainz.org/ws/2/artist"):
+        super().__init__(user_agent)
         self.base_url = base_url
-
-        load_dotenv()
-        self.headers = {"User-Agent": os.getenv("MUSICBRAINZ_USERAGENT")}
+        
+        self.headers = {"User-Agent": self.user_agent}
         # Add "MUSICBRAINZ_USERAGENT="MusicInfluenceNetwork/1.0 (<MUSICBRAINZ_EMAIL>)" in .env
         # Not an api key, free non-commercially: https://musicbrainz.org/doc/MusicBrainz_API
 

@@ -6,6 +6,9 @@ from typing import Optional
 
 class ArtistClient(ABC):
     
+    def __init__(self, user_agent: str):
+        self.user_agent = user_agent
+    
     @abstractmethod
     def artists_genre(self, genre: str, num_requests: int = 1000, limit: int = 100, is_sleep: bool = False, offset: int = 0) -> list[dict]:
         pass
