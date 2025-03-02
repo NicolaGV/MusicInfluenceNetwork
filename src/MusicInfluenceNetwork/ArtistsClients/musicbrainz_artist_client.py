@@ -17,6 +17,30 @@ class MusicbrainzArtistClient(ArtistClient):
         # Add "MUSICBRAINZ_USERAGENT="MusicInfluenceNetwork/1.0 (<MUSICBRAINZ_EMAIL>)" in .env
         # Not an api key, free non-commercially: https://musicbrainz.org/doc/MusicBrainz_API
 
+    def get_single_artist_by_id(self, artist_id):
+
+        url = f"{self.base_url}/{artist_id}"
+        params = {
+            "fmt": "json",
+        }
+
+        response = requests.get(url, headers=self.headers, params=params)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Error: {response.status_code}")
+            return None
+
+    def get_multiple_artist_by_id(self, artist_id_list):
+
+        artists = []
+        for artist_id in artist_id_list:
+            response = self.get_single_artist_by_id(artist_id)
+            if response:
+                artists.append(response)
+            time.sleep(1)
+        return artists
+
     def artists_genre(self, genre: str, num_requests: int = 1000, limit: int = 100, offset: int = 0, save_file: bool = True):
         
         artists = []
