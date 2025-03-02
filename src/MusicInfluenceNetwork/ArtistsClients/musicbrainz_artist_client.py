@@ -47,11 +47,12 @@ class MusicbrainzArtistClient(ArtistClient):
         
         while len(artists) < num_requests:
             params = {
-                "query": f'tag:"{genre}" AND type:"Group"',
+                "query": f'tag:"{genre}" AND type:"Group" OR type:"Person"',
                 "fmt": "json",
                 "limit": limit,
                 "offset": offset
             }
+            # Artist properties type: https://musicbrainz.org/doc/Artist
             
             response = requests.get(self.base_url, headers=self.headers, params=params)
             data = response.json()
