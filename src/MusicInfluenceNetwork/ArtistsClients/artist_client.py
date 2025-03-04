@@ -10,12 +10,12 @@ class ArtistClient(ABC):
         self.user_agent = user_agent
     
     @abstractmethod
-    def artists_genre(self, genre: str, num_requests: int = 1000, limit: int = 100, is_sleep: bool = False, offset: int = 0) -> list[dict]:
+    def artists_genre(self, genre: str, num_requests: int = 1000) -> list[dict]:
         pass
 
-    def stream_artists_genre(self, genre, num_requests=1000, limit=100, is_sleep=False, offset=0):
+    def stream_artists_genre(self, genre, num_requests=1000):
 
-        data = self.artists_genre(genre, num_requests, limit, is_sleep, offset)
+        data = self.artists_genre(genre, num_requests)
         
         for artist in data:
             yield {
