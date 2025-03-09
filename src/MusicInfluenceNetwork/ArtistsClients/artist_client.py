@@ -15,13 +15,9 @@ class ArtistClient(ABC):
     def get_artists_by_genre(self, genre: str, num_requests: int = 1000, limit: int = 100, is_sleep: bool = False, offset: int = 0) -> list[Artist]:
         pass
 
-    def stream_artists_genre(self, genre, num_requests=1000, limit=100, is_sleep=False, offset=0):
+    def stream_artists_genre(self, genre, num_requests=1000):
 
-        data = self.get_artists_by_genre(genre, num_requests, limit, is_sleep, offset)
+        data = self.get_artists_by_genre(genre, num_requests)
         
         for artist in data:
-            yield {
-                "name": artist.get("name", {}),
-                "id": artist.get("id", {}),
-                "birth_year": artist.get("life-span", {}).get("begin"),
-            }
+            yield artist
