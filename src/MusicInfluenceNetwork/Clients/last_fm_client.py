@@ -15,17 +15,25 @@ class LastFMClient(Client):
     def get_similar_artists(self, artist: str) -> list[SimilarArtist]:
         url = self.base_url + "?method=artist.getsimilar&artist=" + artist + "&api_key=" + self.api_key + "&format=json"
         response = requests.get(url)
-        data = response.json()
+        try:
+            data = response.json()
+        except requests.exceptions.JSONDecodeError as e:
+            print(f"Invalid response for artist {artist}")
+            return []
+        
         similar_artists = []
-        for i in range(0, len(data['similarartists']['artist'])):
-            artist_data: dict = data['similarartists']['artist'][i]
-            similar_artist = SimilarArtist(
-                name=artist_data.get('name'),
-                mbid=artist_data.get('mbid'), # Many artists don't have a MusicBrainz ID
-                match=float(artist_data.get('match')),
-                url=artist_data.get('url')
-            )
-            similar_artists.append(similar_artist)
+        try:
+            for i in range(0, len(data['similarartists']['artist'])):
+                artist_data: dict = data['similarartists']['artist'][i]
+                similar_artist = SimilarArtist(
+                    name=artist_data.get('name'),
+                    mbid=artist_data.get('mbid'), # Many artists don't have a MusicBrainz ID
+                    last_fm_match=float(artist_data.get('match'))
+                )
+                similar_artists.append(similar_artist)
+        except KeyError as e:
+            print(f"Artist {artist} isn't on Last FM")
+            return []
         return similar_artists
 
 
