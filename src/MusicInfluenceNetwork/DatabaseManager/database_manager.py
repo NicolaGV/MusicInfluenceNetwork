@@ -7,6 +7,24 @@ import mysql.connector.cursor
 from MusicInfluenceNetwork.Models import Artist, SimilarArtist
 
 class DatabaseManager:
+    """Manager class for database connections.
+    
+    For every method that you write here, do it like this:
+    
+    def your_method(self, ...):
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        
+        <your stuff>
+        
+        try:
+            <CURSOR EXECUTIONS HERE>
+        finally:
+            cursor.close()
+            connection.close()
+            
+        <your other stuff>
+    """
     def __init__(self, config, pool_size: int = 5):
         self.pool = mysql.connector.pooling.MySQLConnectionPool(
             pool_name="mypool",
@@ -131,10 +149,8 @@ class DatabaseManager:
             query += f"({mbid_insert}, '{artist.name}', {start_year_list[idx]}, {end_year_list[idx]}, {is_weak}, False, {group_id})"
             if idx < len(artists) - 1:
                 query += ", "
-        # query += " ON DUPLICATE KEY UPDATE artist_name = artist_name" # Skip duplicate names
         try:
             cursor.execute(query)
-            # connection.commit()
             artist_id = cursor.lastrowid
             artists_ids = self.get_all_artist_ids_from_group(group_id)
             if genre_id is not None:
@@ -146,7 +162,7 @@ class DatabaseManager:
                     if idx < len(artists_ids) - 1:
                         genre_query += ", "
                 cursor.execute(genre_query)
-            connection.commit()
+            connection.commit() # Commit only if everything went fine
         except Exception as error:
             print(f"Error when trying to insert artists:")
             traceback.print_exc()
