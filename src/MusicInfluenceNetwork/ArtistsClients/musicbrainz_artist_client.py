@@ -1,11 +1,10 @@
-from .artist_client import ArtistClient
-
 import requests
 import time
 import json
-
 from pathlib import Path
 
+from .artist_client import ArtistClient
+from MusicInfluenceNetwork.Models import Artist
 
 class MusicbrainzArtistClient(ArtistClient):
 
@@ -41,7 +40,7 @@ class MusicbrainzArtistClient(ArtistClient):
             time.sleep(1)
         return artists
 
-    def artists_genre(self, genre: str, num_requests: int = 1000, limit: int = 100, offset: int = 0, save_file: bool = True):
+    def get_artists_by_genre(self, genre: str, num_requests: int = 1000, limit: int = 100, offset: int = 0, save_file: bool = True) -> list[Artist]:
         
         artists = []
         
@@ -67,6 +66,8 @@ class MusicbrainzArtistClient(ArtistClient):
 
         if (save_file):
             save_artists_to_json(artists, genre, num_requests)
+            
+        artists = [Artist.from_musicbrainz(artist) for artist in artists]
 
         print("Musicbrainz artists loaded")
         return artists
