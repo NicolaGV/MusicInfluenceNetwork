@@ -34,7 +34,9 @@ class Artist:
 
 
 @dataclass
-class SimilarArtist(Artist):
+class SimilarArtist:
+    artist_id: Optional[int] = None
+    similar_artist_id: Optional[int] = None
     last_fm_match: Optional[float] = None
     spotify_match: Optional[float] = 0
     
@@ -44,3 +46,6 @@ class SimilarArtist(Artist):
     def __eq__(self, other):
         return self.name == other.name
 
+    @staticmethod
+    def from_db_row(row):
+        return SimilarArtist(artist_id = row[0], similar_artist_id=row[1], last_fm_match=row[2], spotify_match=row[3])

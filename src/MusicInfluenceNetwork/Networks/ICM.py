@@ -13,9 +13,19 @@ class ICM:
         eigenvector_centrality = nx.eigenvector_centrality(self.graph, max_iter=1000)
         nx.set_node_attributes(self.graph, eigenvector_centrality, 'eigenvector_centrality')
 
-    def choose_seeds(self, num_seeds):
-        sorted_nodes = sorted(self.graph.nodes, key=lambda n: self.graph.nodes[n]['eigenvector_centrality'], reverse=True)
-        return sorted_nodes[:num_seeds]
+    def _choose_seeds(self, num_seeds):
+        # sorted_nodes = sorted(self.graph.nodes, key=lambda n: self.graph.nodes[n]['eigenvector_centrality'], reverse=True)
+
+        centrality_scores = nx.get_node_attributes(self.graph, 'eigenvector_centrality')
+        total_centrality = sum(centrality_scores.values())
+        probabilities = {node: score / total_centrality for node, score in centrality_scores.items()}
+        
+        seeds = random.choices(
+            population=list(probabilities.keys()),
+            weights=list(probabilities.values()),
+            k=num_seeds
+        )
+        return seeds
 
     def _is_activate(self, source, target):
         if self.graph.has_edge(source, target):
@@ -26,9 +36,10 @@ class ICM:
             return False
 
     
-    def run_cascade(self, num_iterations, seed_nodes):
+    def run_cascade(self, num_iterations, num_seeds):
         for i in range(num_iterations):
             print(f"Iteration {i + 1}", end='\r')
+            seed_nodes = self._choose_seeds(num_seeds)
             self._run_cascade_iteration(seed_nodes)
         
         for u, v in self.graph.edges():

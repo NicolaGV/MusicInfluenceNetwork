@@ -175,7 +175,7 @@ class DatabaseManager:
         if len(similar_artists) == 0:
             return
         connection = self.get_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor()    
         
         for artist in similar_artists:
             artist.name = artist.name.replace("\\", "") # Fix backslash 
@@ -230,7 +230,27 @@ class DatabaseManager:
         finally:
             cursor.close()
             connection.close()
+        
+        print(f"Retrieved {len(artists)} artists")
         return artists
+    
+    def get_all_similar_artists(self) -> list[SimilarArtist]:
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        
+        query = "SELECT artist_id, similar_artist_id, lastFM_similarity, spotify_similarity FROM SimilarArtist"
+        
+        try:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            similar_artists = [SimilarArtist.from_db_row(row) for row in rows]
+        finally:
+            cursor.close()
+            connection.close()
+        
+        print(f"Retrieved {len(similar_artists)} similarities")
+        return similar_artists
+
     
     def get_artist_id_from_name(self, artist_name: str) -> int:
         artist_name = artist_name.replace("'", "''") # Fix single quote

@@ -1,4 +1,5 @@
 import os
+import json
 
 from dotenv import load_dotenv
 
@@ -6,6 +7,8 @@ from MusicInfluenceNetwork.ArtistsClients import MusicbrainzArtistClient
 from MusicInfluenceNetwork.DatabaseManager import DatabaseManager
 from MusicInfluenceNetwork.Clients import LastFMClient
 from MusicInfluenceNetwork.Models import Artist
+
+import networkx as nx
 
 """
 0. Choisir un genre (metal)
@@ -64,8 +67,64 @@ def save_similar_of_all_unexplored(last_fm_api_key: str):
     for idx, artist in enumerate(artists):
         save_similar(artist, last_fm_api_key)
         print(f"Saved similar for {idx + 1} / {len(artists)}")
-    
 
+def save_artists_to_json(artists, filename="artists.json"):
+    """
+    Saves a list of Artist objects to a JSON file.
+    """
+    # Convert Artist objects to dictionaries
+    artists_data = [
+        {
+            "artist_id": artist.artist_id,
+            "mbid": artist.mbid,
+            "name": artist.name,
+            "career_start_year": artist.career_start_year,
+            "career_end_year": artist.career_end_year,
+        }
+        for artist in artists
+    ]
+
+    # Save to JSON file
+    with open(filename, "w") as f:
+        json.dump(artists_data, f, indent=4)
+
+    print(f"Artists saved to {filename}")
+
+# ------------------------------------
+# graph
+
+def add_artist_nodes(G, artists):
+    for artist in artists:
+        G.add_node(
+            artist.artist_id,
+            name=artist.name,
+            mbid=artist.mbid if artist.mbid is not None else "",
+            career_start_year=artist.career_start_year if artist.career_start_year is not None else -1,
+            career_end_year=artist.career_end_year if artist.career_end_year is not None else -1,
+        )
+    print("artists added to graph nodes")
+
+def add_artist_edges(G, similar_artists):
+    for similar_artist in similar_artists:
+        G.add_edge(
+            similar_artist.artist_id, 
+            similar_artist.similar_artist_id,
+            weight=similar_artist.last_fm_match if similar_artist.last_fm_match is not None else 0,
+        )
+    print(f"Added {len(G.edges)} artist connections.")
+
+def check_graph_attributes(G):
+    # Check node attributes
+    for node, data in G.nodes(data=True):
+        for key, value in data.items():
+            if value is None:
+                print(f"Warning: Node {node} has None value for attribute '{key}'")
+
+    # Check edge attributes
+    for u, v, data in G.edges(data=True):
+        for key, value in data.items():
+            if value is None:
+                print(f"Warning: Edge {u} -> {v} has None value for attribute '{key}'")
 
 def main():
     global db
@@ -100,10 +159,25 @@ def main():
     # Step 2
     # save_similar_of_all_unexplored(last_fm_api_key)
     
+    # Step 3 - fetch artists and build network
+
+    # artist nodes
     artists = db.get_all_artists()
-    
-    print(f"Retrieved {len(artists)} artists")
-    #[print(artist.name) for artist in artists]
+    # save_artists_to_json(artists, filename="artists.json")
+    graph = nx.DiGraph()
+    add_artist_nodes(graph, artists)
+
+    # artists similar - edges
+    similar_artists = db.get_all_similar_artists()
+    print(similar_artists[0])
+    add_artist_edges(graph, similar_artists)
+
+    check_graph_attributes(graph)
+
+
+    # save graph
+    nx.write_gexf(graph, 'similarity_graph.gexf')
+
 
 if __name__ == "__main__":
     main()
