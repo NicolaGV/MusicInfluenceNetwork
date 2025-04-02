@@ -276,6 +276,70 @@ class DatabaseManager:
         finally:
             cursor.close()
             connection.close()
+            
+    def update_explored_for_all(self, value: bool):
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        query = f"""UPDATE Artist SET is_explored = {value}"""
+        try:
+            cursor.execute(query)
+            connection.commit()
+        finally:
+            cursor.close()
+            connection.close()
+            
+    def save_many_genres(self, genres_names: list[str]) -> list[int]:
+        connection = self.get_connection()
+        cursor = connection.cursor()
+
+        unique_genres_ordered = list(dict.fromkeys(genres_names))
+        
+        genre_ids = []
+        if len(unique_genres_ordered) == 0:
+            return genre_ids
+        
+        try:
+            # Insert any genres that do not already exist.
+            insert_placeholders = ', '.join(['(%s)'] * len(unique_genres_ordered))
+            query_insert = f"INSERT IGNORE INTO Genre (genre_name) VALUES {insert_placeholders}"
+            cursor.execute(query_insert, unique_genres_ordered)
+            
+            # Select the genre_id for ALL requested unique genres (both those potentially just inserted and those that already existed)
+            select_placeholders = ', '.join(['%s'] * len(unique_genres_ordered))
+            query_select = f"SELECT genre_id, genre_name FROM Genre WHERE genre_name IN ({select_placeholders})"
+            cursor.execute(query_select, unique_genres_ordered)
+            results = cursor.fetchall()
+            
+            name_to_id_map = {name: id for id, name in results}
+            
+            genre_ids = [name_to_id_map.get(name, None) for name in unique_genres_ordered]
+            none_count = genre_ids.count(None)
+            for _ in range(none_count):
+                genre_ids.remove(None)
+                
+            connection.commit()
+        finally:
+            cursor.close()
+            connection.close()
+            
+        return genre_ids
+    
+    def save_many_artist_genres(self, artist_id: int, genre_ids: list[int], genre_count: list[int]) -> None:
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        
+        insert_placeholders = ', '.join(['(%s, %s, %s)'] * len(genre_ids))
+        query_insert = f"INSERT INTO ArtistGenre (artist_id, genre_id, count) VALUES {insert_placeholders}"
+    
+        values = [(artist_id, genre_id, genre_count[idx]) for idx, genre_id in enumerate(genre_ids)]
+        flattened_values = [item for sublist in values for item in sublist]
+        try:
+            cursor.execute(query_insert, flattened_values)
+            connection.commit()
+        finally:
+            cursor.close()
+            connection.close()
+        
     
     def empty_database(self) -> None:
         connection = self.get_connection()

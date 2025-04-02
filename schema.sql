@@ -17,12 +17,13 @@ CREATE TABLE Artist (
 
 CREATE TABLE Genre (
     genre_id INTEGER PRIMARY KEY AUTO_INCREMENT,
-    genre_name VARCHAR(256) NOT NULL
+    genre_name VARCHAR(256) NOT NULL UNIQUE
 );
 
 CREATE TABLE ArtistGenre (
     artist_id INTEGER,
     genre_id INTEGER,
+    count INTEGER,
     FOREIGN KEY (artist_id) REFERENCES Artist(artist_id),
     FOREIGN KEY (genre_id) REFERENCES Genre(genre_id),
     PRIMARY KEY (artist_id, genre_id)

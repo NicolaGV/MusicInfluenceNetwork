@@ -1,2 +1,3 @@
 
-from .artist import Artist, SimilarArtist
+from .artist import Artist
+from .similar_artist import SimilarArtist

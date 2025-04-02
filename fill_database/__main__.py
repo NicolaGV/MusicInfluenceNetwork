@@ -126,6 +126,41 @@ def check_graph_attributes(G):
             if value is None:
                 print(f"Warning: Edge {u} -> {v} has None value for attribute '{key}'")
 
+
+def fetch_artists_and_build_network():
+    # artist nodes
+    artists = db.get_all_artists()
+    # save_artists_to_json(artists, filename="artists.json")
+    graph = nx.DiGraph()
+    add_artist_nodes(graph, artists)
+
+    # artists similar - edges
+    similar_artists = db.get_all_similar_artists()
+    print(similar_artists[0])
+    add_artist_edges(graph, similar_artists)
+
+    check_graph_attributes(graph)
+
+    # save graph
+    nx.write_gexf(graph, 'similarity_graph.gexf')
+    
+
+def fetch_and_insert_tags_of_all_artists(last_fm_api_key: str, genre_to_ignore: str = "metal"):
+    last_fm_client = LastFMClient(last_fm_api_key)
+    artists = db.get_all_artists(is_explored=False)
+    print(f"Artists to do: {len(artists)}")
+    for idx, artist in enumerate(artists):
+        tags = last_fm_client.get_tags(artist.name)
+        tags = [tag for tag in tags if tag["name"] != genre_to_ignore]
+        if len(tags) != 0:
+            tags_names = [tag["name"] for tag in tags]
+            tags_ids = db.save_many_genres(tags_names)
+            tags_count = [tag["count"] for tag in tags]
+            db.save_many_artist_genres(artist.artist_id, tags_ids, tags_count)
+        db.update_explored(artist.artist_id, True)
+        print(f"Saved tags for {artist.name} [{idx + 1} / {len(artists)}]")
+        
+
 def main():
     global db
     load_dotenv()
@@ -151,8 +186,6 @@ def main():
     
     db = DatabaseManager(config, pool_size=connection_pool_size)
     
-    # db.empty_database()
-    
     # Step 1
     # save_artists_from_genre(mb_user_agent, genre="metal", nb_artists=100000)
     
@@ -160,23 +193,13 @@ def main():
     # save_similar_of_all_unexplored(last_fm_api_key)
     
     # Step 3 - fetch artists and build network
-
-    # artist nodes
-    artists = db.get_all_artists()
-    # save_artists_to_json(artists, filename="artists.json")
-    graph = nx.DiGraph()
-    add_artist_nodes(graph, artists)
-
-    # artists similar - edges
-    similar_artists = db.get_all_similar_artists()
-    print(similar_artists[0])
-    add_artist_edges(graph, similar_artists)
-
-    check_graph_attributes(graph)
-
-
-    # save graph
-    nx.write_gexf(graph, 'similarity_graph.gexf')
+    # fetch_artists_and_build_network()
+    
+    
+    # Adding tags for all artists
+    # db.update_explored_for_all(False) # Only once
+    fetch_and_insert_tags_of_all_artists(last_fm_api_key)    
+    
 
 
 if __name__ == "__main__":
