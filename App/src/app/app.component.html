@@ -1,0 +1,31 @@
+<!-- app.component.html -->
+<div class="container">
+  <h1>Artist Network Visualizer</h1>
+
+  <div class="control-panel">
+    <input type="text" [(ngModel)]="artistName1" placeholder="Artist 1">
+    <input type="text" [(ngModel)]="artistName2" placeholder="Artist 2">
+    <button (click)="getInfluenceScore()">Get Influence Score</button>
+    <button (click)="generateGraph()">Generate Graph</button>
+  </div>
+
+  <div class="results">
+    <p *ngIf="influenceScore !== null">Influence Score: {{ influenceScore }}</p>
+    <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+  </div>
+
+  <div *ngIf="loading" class="spinner">
+    <p>Loading...</p>
+  </div>
+
+  <div class="graph-container">
+    <div *ngIf="pathLength !== null">
+      <p><strong>Shortest Path Distance:</strong> {{ pathLength }}</p>
+    </div>
+
+    <div *ngIf="graphUrl">
+      <h2>Influence Path Graph</h2>
+      <iframe [src]="graphUrl" width="100%" height="800" frameBorder="0"></iframe>
+    </div>
+  </div>
+</div>
