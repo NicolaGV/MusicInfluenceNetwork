@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "concurrently \"ng serve\" \"python src/app/app.py\"",
+    "start": "concurrently --prefix \"[{name}]\" --names \"ANGULAR,FLASK\" \"ng serve\" \"python -u src/app/app.py\"",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

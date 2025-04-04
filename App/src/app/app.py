@@ -1,10 +1,12 @@
 # app.py
-from flask import Flask, request, jsonify, send_from_directory, send_file, url_for
+from flask import Flask, request, jsonify, url_for, g
 from flask_cors import CORS
 import uuid
 import os
 import networkx as nx
 from pyvis.network import Network
+import time
+from tqdm import tqdm
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GRAPH_PATH = os.path.join(BASE_DIR, "..", "..", "..", "similarity_graph.gexf")
@@ -13,20 +15,46 @@ ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
 STATIC_DIR = os.path.join(ROOT_DIR, "static")
 APP_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
 LIB_DIR = os.path.join(APP_DIR, "lib")
+MAX_NODES = 200
+
 
 app = Flask(__name__, static_folder=STATIC_DIR)
 CORS(app)
 
+# Precomputed graphs
+G = None
+H = None
+DISTANCE_GRAPH_PATH = os.path.join(os.path.dirname(GRAPH_PATH), "distance_graph.gexf")
+
 if not os.path.exists(STATIC_DIR):
     os.makedirs(STATIC_DIR)
 
-def make_distance_graph(G: nx.DiGraph):
-    H = nx.DiGraph()
-    H.add_nodes_from(G.nodes(data=True))
-    for u, v, data in G.edges(data=True):
-        if "weight" in data:
-            H.add_edge(u, v, weight=1.0 - data["weight"])
-    return H
+def load_graphs():
+    if 'graphs_loaded' not in g:
+        g.graphs_loaded = True
+        g.G = nx.read_gexf(GRAPH_PATH)
+
+        # Load or generate distance graph
+        if os.path.exists(DISTANCE_GRAPH_PATH):
+            print("Loading precomputed distance graph...")
+            g.H = nx.read_gexf(DISTANCE_GRAPH_PATH)
+        else:
+            print("Generating and saving distance graph...", flush=True)
+            g.H = nx.DiGraph()
+            g.H.add_nodes_from(g.G.nodes(data=True))
+
+            total_edges = len(g.G.edges())
+            processed_edges = 0
+            print(f"Total edges to process: {total_edges}")
+
+            for u, v, data in g.G.edges(data=True):
+                if "weight" in data:
+                    g.H.add_edge(u, v, weight=1.0 - data["weight"])
+                processed_edges += 1
+
+                if processed_edges % 100000 == 0:
+                    print(f"Processed {processed_edges}/{total_edges} edges", flush=True)
+            nx.write_gexf(g.H, DISTANCE_GRAPH_PATH)
 
 def get_artist_node(G: nx.DiGraph, artist_name: str):
     nodes = [(n, d) for n, d in G.nodes(data=True) if d.get("name") == artist_name]
@@ -52,6 +80,10 @@ def influence_diffusion():
 
 @app.route('/generate-graph', methods=['POST'])
 def generate_graph():
+
+    print("Call load graphs...", flush = True)
+    load_graphs()
+
     data = request.get_json()
     artist_name_1 = data.get("artist_name_1")
     artist_name_2 = data.get("artist_name_2")
@@ -60,19 +92,16 @@ def generate_graph():
     if not artist_name_1 or not artist_name_2:
         return jsonify({"error": "Both artist names are required"}), 400
 
-    G = nx.read_gexf(GRAPH_PATH)
-
-    # Choose generation logic
     if graph_type == "influence":
-        return generate_influence_path_graph(G, artist_name_1, artist_name_2)
+        return generate_influence_path_graph(artist_name_1, artist_name_2)
     elif graph_type == "explore1":
-        return generate_exploration_graph(G, artist_name_1)
+        return generate_exploration_graph(artist_name_1)
     elif graph_type == "explore2":
-        return generate_exploration_graph(G, artist_name_2)
+        return generate_exploration_graph(artist_name_2)
     else:
         return jsonify({"error": "Invalid graph type"}), 400
 
-def generate_influence_path_graph(G, artist_name_1, artist_name_2):
+def generate_influence_path_graph(artist_name_1, artist_name_2):
 
     try:
         graph_filename = f"graph_{artist_name_1}_{artist_name_2}.html"
@@ -84,16 +113,15 @@ def generate_influence_path_graph(G, artist_name_1, artist_name_2):
             return jsonify({"graph_url": graph_url, "path_length": None})
         
         print("Generating new graph...")
-        G = nx.read_gexf(GRAPH_PATH)
-        distance_graph = make_distance_graph(G)
+        distance_graph = g.H
 
-        source_id = get_artist_node(G, artist_name_1)
-        target_id = get_artist_node(G, artist_name_2)
+        source_id = get_artist_node(g.G, artist_name_1)
+        target_id = get_artist_node(g.G, artist_name_2)
 
-        path = nx.shortest_path(distance_graph, source=source_id, target=target_id, weight="weight")
-        path_length = nx.shortest_path_length(distance_graph, source=source_id, target=target_id, weight="weight")
+        path = nx.shortest_path(g.H, source=source_id, target=target_id, weight="weight")
+        path_length = nx.shortest_path_length(g.H, source=source_id, target=target_id, weight="weight")
 
-        path_subgraph = G.subgraph(path)
+        path_subgraph = g.G.subgraph(path)
         for i, node in enumerate(path):
             path_subgraph.nodes[node]["path_order"] = i
 
@@ -121,8 +149,116 @@ def generate_influence_path_graph(G, artist_name_1, artist_name_2):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-def generate_exploration_graph(G, artist_name_1):
-    pass
+def generate_exploration_graph(artist_name, max_distance=1.0):
+    try:
+
+        graph_filename = f"graph_explore_{artist_name}_{max_distance}.html"
+        graph_filepath = os.path.join(STATIC_DIR, graph_filename)
+        
+        if os.path.exists(graph_filepath):
+            print("Graph already exists. Returning existing file.")
+            graph_url = url_for('static', filename=graph_filename, _external=True)
+            return jsonify({"graph_url": graph_url})
+        
+        print("Generating new exploration graph...")
+
+     
+        source_id = get_artist_node(g.G, artist_name)
+
+        total_nodes = len(g.H.nodes())
+        processed_nodes = 0
+        nodes_within_distance = []
+        start_time = time.time()
+
+        print("Processing distances")
+        distances = nx.single_source_dijkstra_path_length(g.H, source=source_id, weight='weight')
+        total_nodes = len(distances)  # More accurate count
+        processed_nodes = 0
+
+        for node, distance in distances.items():
+            processed_nodes += 1
+            if distance <= max_distance:
+                nodes_within_distance.append(node)
+                
+            if processed_nodes % 20000 == 0:
+                elapsed = time.time() - start_time
+                print(f"Processed {processed_nodes}/{total_nodes} nodes "
+                    f"({processed_nodes/total_nodes:.1%}), "
+                    f"found {len(nodes_within_distance)} matches "
+                    f"[{elapsed:.1f}s elapsed]", flush=True)
+
+        if not nodes_within_distance:
+            return jsonify({"error": f"No nodes found within distance {max_distance} from {artist_name}"}), 400
+
+        print("Creating graph...")
+        
+        subgraph = g.G.subgraph(nodes_within_distance)
+        if len(subgraph.nodes()) > MAX_NODES:
+            nodes_within_distance = sorted(nodes_within_distance, key=lambda x: distances[x])[:MAX_NODES]
+            subgraph = g.G.subgraph(nodes_within_distance)
+
+        print(f"Subgraph size: {len(subgraph.nodes())} nodes, {len(subgraph.edges())} edges", flush=True)
+
+        net = Network(height="800px",
+            width="100%",
+            notebook=False,
+            filter_menu=False,
+            directed = True,
+        )
+        net.from_nx(subgraph)
+
+        print("Net created")
+
+        net.force_atlas_2based(
+        )       
+        # net.set_options('''
+        # {
+        # "physics": {
+        #     "enabled": false
+        # }
+        # }
+        # ''')
+
+        for node in tqdm(net.nodes, desc="Formatting nodes", unit="node"):
+            node_id = node['id']
+
+            if node_id == source_id:
+                node['color'] = {
+                    'background': '#FF4136',
+                    'border': '#85144b',
+                    'highlight': {'background': '#FF0000', 'border': '#85144b'}
+                }
+            node['label'] = subgraph.nodes[node_id].get('name', node_id)
+            
+            degree = subgraph.degree[node_id]
+            node['size'] = degree * 0.5 + 1
+            node['font'] = {'size': FONT_SIZE}
+
+
+        for edge in tqdm(net.edges, desc="Formatting edges", unit="edge"):  # Fixed description
+            u = edge['from']
+            v = edge['to']
+            
+            edge_data = subgraph.edges.get((u, v), {})
+            similarity = edge_data.get('weight', 0.5)
+            
+            opacity = max(0.2, min(1.0, similarity))
+            edge['color'] = f'rgba(100, 100, 100, {opacity})'
+            edge['arrows'] = 'to'
+            edge['arrowStrikethrough'] = False
+            edge['smooth'] = False
+
+        net.write_html(graph_filepath)
+        __inline_resources(graph_filepath)
+        print("Exploration graph saved at:", graph_filepath)
+
+        graph_url = url_for('static', filename=graph_filename, _external=True)
+        return jsonify({"graph_url": graph_url})
+
+    except nx.NetworkXNoPath:
+        return jsonify({"error": f"No paths exist from {artist_name}"}), 400
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
 # Not certain
 def __inline_resources(html_path):
