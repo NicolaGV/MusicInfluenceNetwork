@@ -25,6 +25,8 @@ export class AppComponent {
   pathLength: number | null = null;
   loading: boolean = false;
 
+  graphType: string = 'influence';
+
   constructor(private http: HttpClient, private sanitizer: DomSanitizer) { }
 
 
@@ -51,7 +53,8 @@ export class AppComponent {
     this.loading = true;
     const payload = {
       artist_name_1: this.artistName1,
-      artist_name_2: this.artistName2
+      artist_name_2: this.artistName2,
+      graph_type: this.graphType
     };
 
     this.http.post<any>('http://localhost:5000/generate-graph', payload)

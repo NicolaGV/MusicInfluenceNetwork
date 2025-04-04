@@ -18,6 +18,13 @@
     <p>Loading...</p>
   </div>
 
+  <label for="graphType">Select Graph Type:</label>
+  <select id="graphType" [(ngModel)]="graphType">
+    <option value="influence">Influence Path</option>
+    <option value="explore1">Exploration Artist 1</option>
+    <option value="explore2">Exploration Artist 2</option>
+  </select>
+
   <div class="graph-container">
     <div *ngIf="pathLength !== null">
       <p><strong>Shortest Path Distance:</strong> {{ pathLength }}</p>

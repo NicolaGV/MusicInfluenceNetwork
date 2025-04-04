@@ -49,14 +49,30 @@ def influence_diffusion():
 
     return jsonify({'influence_score': influence_score})
 
+
 @app.route('/generate-graph', methods=['POST'])
 def generate_graph():
     data = request.get_json()
     artist_name_1 = data.get("artist_name_1")
     artist_name_2 = data.get("artist_name_2")
+    graph_type = data.get("graph_type", "influence")
 
     if not artist_name_1 or not artist_name_2:
         return jsonify({"error": "Both artist names are required"}), 400
+
+    G = nx.read_gexf(GRAPH_PATH)
+
+    # Choose generation logic
+    if graph_type == "influence":
+        return generate_influence_path_graph(G, artist_name_1, artist_name_2)
+    elif graph_type == "explore1":
+        return generate_exploration_graph(G, artist_name_1)
+    elif graph_type == "explore2":
+        return generate_exploration_graph(G, artist_name_2)
+    else:
+        return jsonify({"error": "Invalid graph type"}), 400
+
+def generate_influence_path_graph(G, artist_name_1, artist_name_2):
 
     try:
         graph_filename = f"graph_{artist_name_1}_{artist_name_2}.html"
@@ -104,6 +120,9 @@ def generate_graph():
         return jsonify({"error": f"No path exists between {artist_name_1} and {artist_name_2}"}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+
+def generate_exploration_graph(G, artist_name_1):
+    pass
 
 # Not certain
 def __inline_resources(html_path):
