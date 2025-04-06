@@ -52,3 +52,26 @@
     overflow: hidden;
     background: white;
 }
+
+.loading {
+    color: #666;
+    font-style: italic;
+    margin: 0.5rem 0;
+}
+
+.score-container {
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.score {
+    font-weight: bold;
+    margin: 0.5rem 0;
+}
+
+.error {
+    color: #dc3545;
+    margin: 0.5rem 0;
+}

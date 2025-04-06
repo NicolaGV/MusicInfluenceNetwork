@@ -19,7 +19,13 @@ export class AppComponent {
   artistName2: string | null = null;
 
   influenceScore: number | null = null;
-  errorMessage: string = '';
+  attentionScore: number | null = null;
+  loadingDiffusion = false;
+  loadingAttention = false;
+  errorMessageDiffusion = '';
+  errorMessageAttention = '';
+
+  errorMessage = '';
 
   graphUrl: SafeResourceUrl | null = null;
   pathLength: number | null = null;
@@ -31,20 +37,39 @@ export class AppComponent {
 
 
   getInfluenceScore() {
-    const payload = {
-      artist_name_1: this.artistName1,
-      artist_name_2: this.artistName2
-    };
+    this.loadingDiffusion = true;
+    const payload = { artist_name_1: this.artistName1, artist_name_2: this.artistName2 };
 
     this.http.post<any>('http://localhost:5000/influence-diffusion', payload)
       .subscribe({
         next: (response) => {
           this.influenceScore = response.influence_score;
-          this.errorMessage = '';
+          this.errorMessageDiffusion = '';
+          this.loadingDiffusion = false;
         },
         error: (error) => {
-          this.errorMessage = error.error?.error || 'An error occurred';
+          this.errorMessageDiffusion = error.error?.error || 'An error occurred';
           this.influenceScore = null;
+          this.loadingDiffusion = false;
+        }
+      });
+  }
+
+  getAttentionScore() {
+    this.loadingAttention = true;
+    const payload = { artist_name_1: this.artistName1, artist_name_2: this.artistName2 };
+
+    this.http.post<any>('http://localhost:5000/influence-attention', payload)
+      .subscribe({
+        next: (response) => {
+          this.attentionScore = response.attention_score;
+          this.errorMessageAttention = '';
+          this.loadingAttention = false;
+        },
+        error: (error) => {
+          this.errorMessageAttention = error.error?.error || 'An error occurred';
+          this.attentionScore = null;
+          this.loadingAttention = false;
         }
       });
   }

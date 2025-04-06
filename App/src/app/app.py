@@ -10,6 +10,10 @@ from tqdm import tqdm
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GRAPH_PATH = os.path.join(BASE_DIR, "..", "..", "..", "similarity_graph.gexf")
+INFLUENCE_GRAPH_PATH = os.path.join(BASE_DIR, "..", "..", "..", "influence_graph.gexf")
+ATTENTION_GRAPH_PATH = os.path.join(BASE_DIR, "..", "..", "..", "attention_composite.gexf")
+
+
 FONT_SIZE = 25
 ROOT_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", ".."))
 STATIC_DIR = os.path.join(ROOT_DIR, "static")
@@ -25,6 +29,9 @@ CORS(app)
 G = None
 H = None
 DISTANCE_GRAPH_PATH = os.path.join(os.path.dirname(GRAPH_PATH), "distance_graph.gexf")
+
+INFLUENCE_GRAPH = None
+ATTENTION_GRAPH = None
 
 if not os.path.exists(STATIC_DIR):
     os.makedirs(STATIC_DIR)
@@ -56,6 +63,23 @@ def load_graphs():
                     print(f"Processed {processed_edges}/{total_edges} edges", flush=True)
             nx.write_gexf(g.H, DISTANCE_GRAPH_PATH)
 
+def load_all_graphs():
+    load_influence_graph()
+    load_attention_graph()
+
+def load_influence_graph():
+    if 'influence_loaded' not in g:
+        print("Loading influence graph...", flush=True)
+        g.influence_loaded = True
+        g.INFLUENCE_GRAPH = nx.read_gexf(INFLUENCE_GRAPH_PATH)
+
+def load_attention_graph():
+    if 'attention_loaded' not in g:
+        print("Loading attention graph...", flush=True)
+        g.attention_loaded = True
+        g.ATTENTION_GRAPH = nx.read_gexf(ATTENTION_GRAPH_PATH)
+
+
 def get_artist_node(G: nx.DiGraph, artist_name: str):
     nodes = [(n, d) for n, d in G.nodes(data=True) if d.get("name") == artist_name]
     if not nodes:
@@ -66,6 +90,8 @@ def get_artist_node(G: nx.DiGraph, artist_name: str):
 
 @app.route('/influence-diffusion', methods=['POST'])
 def influence_diffusion():
+    print("Get diffusion score", flush=True)
+    load_influence_graph()
     data = request.get_json()
     artist_name_1 = data.get('artist_name_1')
     artist_name_2 = data.get('artist_name_2')
@@ -73,10 +99,52 @@ def influence_diffusion():
     if not artist_name_1 or not artist_name_2:
         return jsonify({'error': 'Both artist names are required'}), 400
 
-    influence_score = 0.16
+    try:
+        node1 = get_artist_node(g.INFLUENCE_GRAPH, artist_name_1)
+        node2 = get_artist_node(g.INFLUENCE_GRAPH, artist_name_2)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
 
-    return jsonify({'influence_score': influence_score})
+    if g.INFLUENCE_GRAPH.has_edge(node1, node2):
+        weight = g.INFLUENCE_GRAPH[node1][node2]['weight']
+    # elif g.G.has_edge(node2, node1): # Want directed influence, so commented
+    #     weight = g.G[node2][node1]['weight']
+    else:
+        weight = -1.0
 
+    return jsonify({'influence_score': weight})
+
+@app.route('/influence-attention', methods=['POST'])
+def influence_attention():
+    load_attention_graph()
+    print("Get attention score", flush=True)
+    data = request.get_json()
+    artist_name_1 = data.get('artist_name_1')
+    artist_name_2 = data.get('artist_name_2')
+
+    print("Artist names:", artist_name_1, artist_name_2, flush=True)
+
+    if not artist_name_1 or not artist_name_2:
+        print("Artist not existant", flush=True)
+        return jsonify({'error': 'Both artist names are required'}), 400
+
+    try:
+        node1 = get_artist_node(g.ATTENTION_GRAPH, artist_name_1)
+        node2 = get_artist_node(g.ATTENTION_GRAPH, artist_name_2)
+    except ValueError as e:
+        print(f"Error getting artist nodes: {e}", flush=True)
+        return jsonify({'error': str(e)}), 400
+
+    if g.ATTENTION_GRAPH.has_edge(node1, node2):
+        print("Edge exists", flush=True)
+        weight = g.ATTENTION_GRAPH[node1][node2]['weight']
+    else:
+        print("Edge non-existant", flush=True)
+        weight = -1.0
+
+    print("Returning weight", flush=True)
+    print("Weight:", weight, flush=True)
+    return jsonify({'attention_score': weight})
 
 @app.route('/generate-graph', methods=['POST'])
 def generate_graph():
@@ -113,7 +181,6 @@ def generate_influence_path_graph(artist_name_1, artist_name_2):
             return jsonify({"graph_url": graph_url, "path_length": None})
         
         print("Generating new graph...")
-        distance_graph = g.H
 
         source_id = get_artist_node(g.G, artist_name_1)
         target_id = get_artist_node(g.G, artist_name_2)
@@ -130,7 +197,7 @@ def generate_influence_path_graph(artist_name_1, artist_name_2):
         print(f"Nodes in path subgraph: {list(path_subgraph.nodes())}")
         print(f"Edges in path subgraph: {list(path_subgraph.edges())}")
 
-        net = Network(height="800px", width="100%", notebook=False, filter_menu=True)
+        net = Network(height="800px", width="100%", notebook=False, filter_menu=True, directed = True)
         net.from_nx(path_subgraph)
 
         for node in net.nodes:
@@ -211,13 +278,7 @@ def generate_exploration_graph(artist_name, max_distance=1.0):
 
         net.force_atlas_2based(
         )       
-        # net.set_options('''
-        # {
-        # "physics": {
-        #     "enabled": false
-        # }
-        # }
-        # ''')
+
 
         for node in tqdm(net.nodes, desc="Formatting nodes", unit="node"):
             node_id = node['id']
@@ -232,7 +293,11 @@ def generate_exploration_graph(artist_name, max_distance=1.0):
             
             degree = subgraph.degree[node_id]
             node['size'] = degree * 0.5 + 1
-            node['font'] = {'size': FONT_SIZE}
+            node['font'] = {
+                'size': FONT_SIZE,
+                'strokeWidth': 3,
+
+            }
 
 
         for edge in tqdm(net.edges, desc="Formatting edges", unit="edge"):  # Fixed description
@@ -299,3 +364,4 @@ def __inline_resources(html_path):
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
+    load_all_graphs()

@@ -5,13 +5,27 @@
   <div class="control-panel">
     <input type="text" [(ngModel)]="artistName1" placeholder="Artist 1">
     <input type="text" [(ngModel)]="artistName2" placeholder="Artist 2">
-    <button (click)="getInfluenceScore()">Get Influence Score</button>
     <button (click)="generateGraph()">Generate Graph</button>
   </div>
 
   <div class="results">
-    <p *ngIf="influenceScore !== null">Influence Score: {{ influenceScore }}</p>
-    <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+    <div class="score-container">
+      <button (click)="getInfluenceScore()">Get Diffusion Score</button>
+      <div *ngIf="loadingDiffusion" class="loading">Calculating Diffusion...</div>
+      <p *ngIf="influenceScore !== null" class="score">
+        Diffusion Score: {{ influenceScore }}
+      </p>
+      <p *ngIf="errorMessageDiffusion" class="error">{{ errorMessageDiffusion }}</p>
+    </div>
+
+    <div class="score-container">
+      <button (click)="getAttentionScore()">Get Attention Score</button>
+      <div *ngIf="loadingAttention" class="loading">Calculating Attention...</div>
+      <p *ngIf="attentionScore !== null" class="score">
+        Attention Score: {{ attentionScore }}
+      </p>
+      <p *ngIf="errorMessageAttention" class="error">{{ errorMessageAttention }}</p>
+    </div>
   </div>
 
   <div *ngIf="loading" class="spinner">
