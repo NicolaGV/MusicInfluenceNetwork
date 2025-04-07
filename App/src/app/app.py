@@ -151,8 +151,8 @@ def load_graphs():
 
 def load_all_graphs():
     print("Loading all graphs...", flush=True)
-    # load_influence_graph()
-    # load_attention_graph()
+    load_influence_graph()
+    load_attention_graph()
     load_similarity_graph()
     load_gat_model()
 
@@ -338,7 +338,9 @@ def generate_graph():
     if not artist_name_1 or not artist_name_2:
         return jsonify({"error": "Both artist names are required"}), 400
 
-    if graph_type == "influence":
+    if graph_type == "similarity":
+        return generate_similarity_path_graph(artist_name_1, artist_name_2)
+    elif graph_type == "influence":
         return generate_influence_path_graph(artist_name_1, artist_name_2)
     elif graph_type == "explore1":
         return generate_exploration_graph(artist_name_1)
@@ -347,7 +349,7 @@ def generate_graph():
     else:
         return jsonify({"error": "Invalid graph type"}), 400
 
-def generate_influence_path_graph(artist_name_1, artist_name_2):
+def generate_similarity_path_graph(artist_name_1, artist_name_2):
 
     try:
         graph_filename = f"graph_{artist_name_1}_{artist_name_2}.html"
@@ -382,9 +384,66 @@ def generate_influence_path_graph(artist_name_1, artist_name_2):
             node['label'] = path_subgraph.nodes[node['id']].get('name', node['id'])
             node['font'] = {'size': FONT_SIZE}
 
+            if node['id'] == source_id or node['id'] == target_id:
+                node['color'] = {
+                    'background': '#FF4136',
+                    'border': '#85144b',
+                    'highlight': {'background': '#FF0000', 'border': '#85144b'}
+                }
+
         net.write_html(graph_filepath)
         __inline_resources(graph_filepath)
         print("Graph file saved at:", graph_filepath)
+
+        graph_url = url_for('static', filename=graph_filename, _external=True)
+        return jsonify({"graph_url": graph_url, "path_length": path_length})
+
+    except nx.NetworkXNoPath:
+        return jsonify({"error": f"No path exists between {artist_name_1} and {artist_name_2}"}), 400
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+def generate_influence_path_graph(artist_name_1, artist_name_2):
+    try:
+        graph_filename = f"influence_graph_{artist_name_1}_{artist_name_2}.html"
+        graph_filepath = os.path.join(STATIC_DIR, graph_filename)
+        
+        if os.path.exists(graph_filepath):
+            print("Graph already exists. Returning existing file.")
+            graph_url = url_for('static', filename=graph_filename, _external=True)
+            return jsonify({"graph_url": graph_url, "path_length": None})
+        
+        print("Generating new influence graph...")
+
+        source_id = get_artist_node(INFLUENCE_GRAPH, artist_name_1)
+        target_id = get_artist_node(INFLUENCE_GRAPH, artist_name_2)
+
+        path = nx.shortest_path(INFLUENCE_GRAPH, source=source_id, target=target_id, weight="weight")
+        path_length = nx.shortest_path_length(INFLUENCE_GRAPH, source=source_id, target=target_id, weight="weight")
+
+        path_subgraph = INFLUENCE_GRAPH.subgraph(path)
+        for i, node in enumerate(path):
+            path_subgraph.nodes[node]["path_order"] = i
+
+        print(f"Shortest influence path from {artist_name_1} to {artist_name_2}: {path}")
+        print(f"Path length: {path_length}")
+
+        net = Network(height="800px", width="100%", notebook=False, filter_menu=True, directed=True)
+        net.from_nx(path_subgraph)
+
+        for node in net.nodes:
+            node['label'] = path_subgraph.nodes[node['id']].get('name', node['id'])
+            node['font'] = {'size': FONT_SIZE}
+            if node['id'] == source_id or node['id'] == target_id:
+                node['color'] = {
+                    'background': '#FF4136',
+                    'border': '#85144b',
+                    'highlight': {'background': '#FF0000', 'border': '#85144b'}
+                }
+
+        net.write_html(graph_filepath)
+        __inline_resources(graph_filepath)
+        print("Influence graph file saved at:", graph_filepath)
 
         graph_url = url_for('static', filename=graph_filename, _external=True)
         return jsonify({"graph_url": graph_url, "path_length": path_length})
