@@ -26,6 +26,25 @@
       </p>
       <p *ngIf="errorMessageAttention" class="error">{{ errorMessageAttention }}</p>
     </div>
+
+    <div class="score-container">
+      <button (click)="getSimilarityBaseScore()">Get Base Similarity</button>
+      <div *ngIf="loadingBaseSimilarity" class="loading">Calculating Base Similarity...</div>
+      <p *ngIf="similarityBaseScore !== null" class="score">
+        Base Similarity: {{ similarityBaseScore }}
+      </p>
+      <p *ngIf="errorMessageBase" class="error">{{ errorMessageBase }}</p>
+    </div>
+
+    <!-- Similarity Composite Score -->
+    <div class="score-container">
+      <button (click)="getSimilarityGatScore()">Get Gat Similarity</button>
+      <div *ngIf="loadingGatSimilarity" class="loading">Calculating Gat...</div>
+      <p *ngIf="similarityGatScore !== null" class="score">
+        GAT Similarity: {{ similarityGatScore }}
+      </p>
+      <p *ngIf="errorMessageGat" class="error">{{ errorMessageGat }}</p>
+    </div>
   </div>
 
   <div *ngIf="loading" class="spinner">

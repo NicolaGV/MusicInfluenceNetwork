@@ -25,6 +25,13 @@ export class AppComponent {
   errorMessageDiffusion = '';
   errorMessageAttention = '';
 
+  similarityBaseScore: number | null = null;
+  similarityGatScore: number | null = null;
+  loadingBaseSimilarity = false;
+  loadingGatSimilarity = false;
+  errorMessageBase = '';
+  errorMessageGat = '';
+
   errorMessage = '';
 
   graphUrl: SafeResourceUrl | null = null;
@@ -70,6 +77,50 @@ export class AppComponent {
           this.errorMessageAttention = error.error?.error || 'An error occurred';
           this.attentionScore = null;
           this.loadingAttention = false;
+        }
+      });
+  }
+
+  getSimilarityBaseScore() {
+    this.loadingBaseSimilarity = true;
+    const payload = {
+      artist_name_1: this.artistName1,
+      artist_name_2: this.artistName2
+    };
+
+    this.http.post<any>('http://localhost:5000/similarity-base', payload)
+      .subscribe({
+        next: (response) => {
+          this.similarityBaseScore = response.similarity_score;
+          this.errorMessageBase = '';
+          this.loadingBaseSimilarity = false;
+        },
+        error: (error) => {
+          this.errorMessageBase = error.error?.error || 'An error occurred';
+          this.similarityBaseScore = null;
+          this.loadingBaseSimilarity = false;
+        }
+      });
+  }
+
+  getSimilarityGatScore() {
+    this.loadingGatSimilarity = true;
+    const payload = {
+      artist_name_1: this.artistName1,
+      artist_name_2: this.artistName2
+    };
+
+    this.http.post<any>('http://localhost:5000/similarity-gat', payload)
+      .subscribe({
+        next: (response) => {
+          this.similarityGatScore = response.gat_score;
+          this.errorMessageGat = '';
+          this.loadingGatSimilarity = false;
+        },
+        error: (error) => {
+          this.errorMessageGat = error.error?.error || 'An error occurred';
+          this.similarityGatScore = null;
+          this.loadingGatSimilarity = false;
         }
       });
   }
