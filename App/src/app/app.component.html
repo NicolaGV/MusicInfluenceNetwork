@@ -1,72 +1,123 @@
 <!-- app.component.html -->
 <div class="container">
-  <h1>Artist Network Visualizer</h1>
+  <header class="header">
+    <h1 class="title">Artist Network Visualizer</h1>
+    <p class="subtitle">Explore connections between musical artists</p>
+  </header>
 
-  <div class="control-panel">
-    <input type="text" [(ngModel)]="artistName1" placeholder="Artist 1">
-    <input type="text" [(ngModel)]="artistName2" placeholder="Artist 2">
-    <button (click)="generateGraph()">Generate Graph</button>
+  <div class="control-panel card">
+    <div class="input-group">
+      <input type="text" [(ngModel)]="artistName1" placeholder="Enter Artist 1" class="search-input">
+      <input type="text" [(ngModel)]="artistName2" placeholder="Enter Artist 2" class="search-input">
+    </div>
+    <button (click)="generateGraph()" class="primary-button">
+      <span class="button-text">Generate Network Graph</span>
+      <i class="fas fa-project-diagram button-icon"></i>
+    </button>
   </div>
 
-  <div class="results">
-    <div class="score-container">
-      <button (click)="getInfluenceScore()">Get Diffusion Score</button>
-      <div *ngIf="loadingDiffusion" class="loading">Calculating Diffusion...</div>
-      <p *ngIf="influenceScore !== null" class="score">
-        Diffusion Score: {{ influenceScore }}
+  <div class="metrics-grid">
+    <!-- Diffusion Score -->
+    <div class="metric-card">
+      <button class="metric-button" (click)="getInfluenceScore()">
+        <i class="metric-icon fas fa-share-nodes"></i>
+        Get Diffusion Score
+      </button>
+      <div *ngIf="loadingDiffusion" class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Calculating...</p>
+      </div>
+      <div *ngIf="influenceScore !== null" class="metric-result">
+        <h3 class="metric-title">Diffusion Score</h3>
+        <p class="metric-value">{{ influenceScore }}</p>
+      </div>
+      <p *ngIf="errorMessageDiffusion" class="error-message">
+        <i class="fas fa-exclamation-triangle"></i> {{ errorMessageDiffusion }}
       </p>
-      <p *ngIf="errorMessageDiffusion" class="error">{{ errorMessageDiffusion }}</p>
     </div>
 
-    <div class="score-container">
-      <button (click)="getAttentionScore()">Get Attention Score</button>
-      <div *ngIf="loadingAttention" class="loading">Calculating Attention...</div>
-      <p *ngIf="attentionScore !== null" class="score">
-        Attention Score: {{ attentionScore }}
+    <!-- Attention Score -->
+    <div class="metric-card">
+      <button class="metric-button" (click)="getAttentionScore()">
+        <i class="metric-icon fas fa-eye"></i>
+        Get Attention Score
+      </button>
+      <div *ngIf="loadingAttention" class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Calculating...</p>
+      </div>
+      <div *ngIf="attentionScore !== null" class="metric-result">
+        <h3 class="metric-title">Attention Score</h3>
+        <p class="metric-value">{{ attentionScore }}</p>
+      </div>
+      <p *ngIf="errorMessageAttention" class="error-message">
+        <i class="fas fa-exclamation-triangle"></i> {{ errorMessageAttention }}
       </p>
-      <p *ngIf="errorMessageAttention" class="error">{{ errorMessageAttention }}</p>
     </div>
 
-    <div class="score-container">
-      <button (click)="getSimilarityBaseScore()">Get Base Similarity</button>
-      <div *ngIf="loadingBaseSimilarity" class="loading">Calculating Base Similarity...</div>
-      <p *ngIf="similarityBaseScore !== null" class="score">
-        Base Similarity: {{ similarityBaseScore }}
+    <!-- Base Similarity -->
+    <div class="metric-card">
+      <button class="metric-button" (click)="getSimilarityBaseScore()">
+        <i class="metric-icon fas fa-layer-group"></i>
+        Get Base Similarity
+      </button>
+      <div *ngIf="loadingBaseSimilarity" class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Calculating...</p>
+      </div>
+      <div *ngIf="similarityBaseScore !== null" class="metric-result">
+        <h3 class="metric-title">Base Similarity</h3>
+        <p class="metric-value">{{ similarityBaseScore }}</p>
+      </div>
+      <p *ngIf="errorMessageBase" class="error-message">
+        <i class="fas fa-exclamation-triangle"></i> {{ errorMessageBase }}
       </p>
-      <p *ngIf="errorMessageBase" class="error">{{ errorMessageBase }}</p>
     </div>
 
-    <!-- Similarity Composite Score -->
-    <div class="score-container">
-      <button (click)="getSimilarityGatScore()">Get Gat Similarity</button>
-      <div *ngIf="loadingGatSimilarity" class="loading">Calculating Gat...</div>
-      <p *ngIf="similarityGatScore !== null" class="score">
-        GAT Similarity: {{ similarityGatScore }}
+    <!-- GAT Similarity -->
+    <div class="metric-card">
+      <button class="metric-button" (click)="getSimilarityGatScore()">
+        <i class="metric-icon fas fa-brain"></i>
+        Get Gat Similarity
+      </button>
+      <div *ngIf="loadingGatSimilarity" class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Calculating...</p>
+      </div>
+      <div *ngIf="similarityGatScore !== null" class="metric-result">
+        <h3 class="metric-title">GAT Similarity</h3>
+        <p class="metric-value">{{ similarityGatScore }}</p>
+      </div>
+      <p *ngIf="errorMessageGat" class="error-message">
+        <i class="fas fa-exclamation-triangle"></i> {{ errorMessageGat }}
       </p>
-      <p *ngIf="errorMessageGat" class="error">{{ errorMessageGat }}</p>
     </div>
   </div>
 
-  <div *ngIf="loading" class="spinner">
-    <p>Loading...</p>
-  </div>
-
-  <label for="graphType">Select Graph Type:</label>
-  <select id="graphType" [(ngModel)]="graphType">
-    <option value="similarity">Similarity Path</option>
-    <option value="influence">Influence Path</option>
-    <option value="explore1">Exploration Artist 1</option>
-    <option value="explore2">Exploration Artist 2</option>
-  </select>
-
-  <div class="graph-container">
-    <div *ngIf="pathLength !== null">
-      <p><strong>Shortest Path Distance:</strong> {{ pathLength }}</p>
+  <div class="graph-controls card">
+    <div class="graph-type-selector">
+      <label for="graphType" class="dropdown-label">Visualization Mode:</label>
+      <select id="graphType" [(ngModel)]="graphType" class="styled-dropdown">
+        <option value="similarity">Similarity Path</option>
+        <option value="influence">Influence Path</option>
+        <option value="explore1">Artist 1 Exploration</option>
+        <option value="explore2">Artist 2 Exploration</option>
+      </select>
     </div>
 
-    <div *ngIf="graphUrl">
-      <h2>Influence Path Graph</h2>
-      <iframe [src]="graphUrl" width="100%" height="800" frameBorder="0"></iframe>
+    <div *ngIf="pathLength !== null" class="path-info">
+      <i class="fas fa-route"></i>
+      <span>Path Distance: {{ pathLength }}</span>
+    </div>
+  </div>
+
+  <div class="graph-container card">
+    <div *ngIf="graphUrl" class="graph-embed">
+      <h2 class="graph-title">
+        <i class="fas fa-network-wired"></i>
+        Artist Connection Network
+      </h2>
+      <iframe [src]="graphUrl" class="network-iframe"></iframe>
     </div>
   </div>
 </div>
